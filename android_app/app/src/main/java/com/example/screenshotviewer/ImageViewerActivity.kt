@@ -105,14 +105,19 @@ class ImageViewerActivity : AppCompatActivity() {
                     Toast.makeText(
                         this@ImageViewerActivity,
                         "已保存到 DCIM/Screenshots/${currentImage.name}",
-                        Toast.LENGTH_LONG
+                        Toast.LENGTH_SHORT
                     ).show()
+
+                    // 保存成功后自动删除服务器上的图片
+                    deleteImageAfterSave(currentImage)
                 } else {
                     Toast.makeText(
                         this@ImageViewerActivity,
                         "保存失败",
                         Toast.LENGTH_SHORT
                     ).show()
+                    saveImageButton.isEnabled = true
+                    saveImageButton.text = "保存到本地"
                 }
             } catch (e: Exception) {
                 Toast.makeText(
@@ -120,7 +125,6 @@ class ImageViewerActivity : AppCompatActivity() {
                     "保存失败: ${e.message}",
                     Toast.LENGTH_LONG
                 ).show()
-            } finally {
                 saveImageButton.isEnabled = true
                 saveImageButton.text = "保存到本地"
             }
@@ -245,6 +249,54 @@ class ImageViewerActivity : AppCompatActivity() {
                 saveImageToLocal()
             } else {
                 Toast.makeText(this, "需要存储权限才能保存图片", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
+    private fun deleteImageAfterSave(image: FileItem) {
+        lifecycleScope.launch {
+            try {
+                saveImageButton.text = "删除中..."
+
+                val apiService = RetrofitClient.getClient(baseUrl + "/")
+                val response = apiService.deleteFile(image.path)
+
+                if (response.isSuccessful && response.body()?.success == true) {
+                    Toast.makeText(this@ImageViewerActivity, "服务器图片已删除", Toast.LENGTH_SHORT).show()
+
+                    // Remove image from list and update adapter
+                    val mutableImages = images.toMutableList()
+                    val position = imageViewPager.currentItem
+                    mutableImages.removeAt(position)
+                    images = mutableImages
+
+                    if (images.isEmpty()) {
+                        // No more images, close the viewer
+                        finish()
+                    } else {
+                        // Update the ViewPager
+                        val adapter = ImagePagerAdapter(images, baseUrl)
+                        imageViewPager.adapter = adapter
+                        // Stay at same position or go to previous if we deleted the last one
+                        val newPosition = if (position >= images.size) images.size - 1 else position
+                        imageViewPager.setCurrentItem(newPosition, false)
+                    }
+                } else {
+                    Toast.makeText(
+                        this@ImageViewerActivity,
+                        "删除失败: ${response.body()?.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(
+                    this@ImageViewerActivity,
+                    "删除失败: ${e.message}",
+                    Toast.LENGTH_SHORT
+                ).show()
+            } finally {
+                saveImageButton.isEnabled = true
+                saveImageButton.text = "保存到本地"
             }
         }
     }

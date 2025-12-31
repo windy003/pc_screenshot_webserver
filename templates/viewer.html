@@ -236,7 +236,7 @@
     <div class="header">
         <h1>{{ filename }}</h1>
         <div class="header-buttons">
-            <a href="{{ url_for('download', filepath=filepath) }}" class="btn btn-primary">下载</a>
+            <button class="btn btn-primary" onclick="downloadAndDelete()">保存到本地</button>
             <a href="{{ url_for('index', subpath=filepath.rsplit('/', 1)[0] if '/' in filepath else '') }}" class="btn btn-secondary">返回</a>
         </div>
     </div>
@@ -415,6 +415,58 @@
                     break;
             }
         });
+
+        // 下载并删除图片
+        function downloadAndDelete() {
+            const item = playlist[currentIndex];
+            const downloadUrl = `/download/${item.path}`;
+
+            // 创建一个隐藏的a标签来触发下载
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = item.name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // 等待一小段时间确保下载开始,然后删除文件
+            setTimeout(() => {
+                // 调用删除接口
+                fetch('/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `path=${encodeURIComponent(item.path)}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 从播放列表中移除当前图片
+                        playlist.splice(currentIndex, 1);
+
+                        // 如果还有图片,显示下一张(或前一张)
+                        if (playlist.length > 0) {
+                            // 如果删除的是最后一张,显示前一张
+                            if (currentIndex >= playlist.length) {
+                                currentIndex = playlist.length - 1;
+                            }
+                            updateImage();
+                        } else {
+                            // 如果没有图片了,返回文件列表
+                            const parentPath = item.path.split('/').slice(0, -1).join('/');
+                            window.location.href = `/browse/${parentPath}`;
+                        }
+                    } else {
+                        alert('删除失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('删除失败:', error);
+                    alert('删除失败,请稍后重试');
+                });
+            }, 1000); // 等待1秒确保下载开始
+        }
 
         // 触摸支持
         let touchStartDistance = 0;
