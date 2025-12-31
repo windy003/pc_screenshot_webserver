@@ -25,6 +25,13 @@
             justify-content: space-between;
             align-items: center;
             border-bottom: 1px solid #3d3d3d;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .header.ui-hidden {
+            transform: translateY(-100%);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .header h1 {
@@ -114,6 +121,13 @@
             display: flex;
             gap: 10px;
             align-items: center;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .controls.ui-hidden {
+            transform: translateX(-50%) translateY(150%);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .control-btn {
@@ -148,8 +162,13 @@
             border-radius: 50%;
             cursor: pointer;
             font-size: 24px;
-            transition: all 0.3s;
+            transition: all 0.3s, opacity 0.3s ease;
             z-index: 10;
+        }
+
+        .nav-button.ui-hidden {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .nav-button:hover {
@@ -177,6 +196,13 @@
             overflow-y: hidden;
             white-space: nowrap;
             border-top: 1px solid #3d3d3d;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .playlist.ui-hidden {
+            transform: translateY(100%);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .playlist-item {

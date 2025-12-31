@@ -11,6 +11,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import com.github.chrisbanes.photoview.PhotoView
 import androidx.appcompat.app.AlertDialog
@@ -34,10 +36,17 @@ class ImageViewerActivity : AppCompatActivity() {
     private lateinit var imageViewPager: ViewPager2
     private lateinit var saveImageButton: Button
     private lateinit var deleteButton: Button
+    private lateinit var prevButton: Button
+    private lateinit var nextButton: Button
+    private lateinit var topBar: LinearLayout
+    private lateinit var bottomBar: LinearLayout
+    private lateinit var imageNameTextView: TextView
+    private lateinit var imageCountTextView: TextView
 
     private var images: List<FileItem> = emptyList()
     private var currentPosition: Int = 0
     private var baseUrl: String = ""
+    private var isUIVisible: Boolean = true
 
     private val STORAGE_PERMISSION_CODE = 100
 
@@ -66,12 +75,36 @@ class ImageViewerActivity : AppCompatActivity() {
         imageViewPager = findViewById(R.id.imageViewPager)
         saveImageButton = findViewById(R.id.saveImageButton)
         deleteButton = findViewById(R.id.deleteButton)
+        prevButton = findViewById(R.id.prevButton)
+        nextButton = findViewById(R.id.nextButton)
+        topBar = findViewById(R.id.topBar)
+        bottomBar = findViewById(R.id.bottomBar)
+        imageNameTextView = findViewById(R.id.imageNameTextView)
+        imageCountTextView = findViewById(R.id.imageCountTextView)
     }
 
     private fun setupViewPager() {
-        val adapter = ImagePagerAdapter(images, baseUrl)
+        val adapter = ImagePagerAdapter(images, baseUrl) {
+            // 点击图片时切换UI显示/隐藏
+            toggleUI()
+        }
         imageViewPager.adapter = adapter
         imageViewPager.setCurrentItem(currentPosition, false)
+
+        // 禁用用户滑动，只允许通过按钮切换图片
+        imageViewPager.isUserInputEnabled = false
+
+        // 更新图片信息
+        updateImageInfo()
+
+        // 监听页面变化
+        imageViewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
+            override fun onPageSelected(position: Int) {
+                super.onPageSelected(position)
+                currentPosition = position
+                updateImageInfo()
+            }
+        })
     }
 
     private fun setupListeners() {
@@ -85,6 +118,84 @@ class ImageViewerActivity : AppCompatActivity() {
 
         deleteButton.setOnClickListener {
             confirmDeleteCurrentImage()
+        }
+
+        prevButton.setOnClickListener {
+            if (currentPosition > 0) {
+                imageViewPager.setCurrentItem(currentPosition - 1, true)
+            }
+        }
+
+        nextButton.setOnClickListener {
+            if (currentPosition < images.size - 1) {
+                imageViewPager.setCurrentItem(currentPosition + 1, true)
+            }
+        }
+    }
+
+    private fun updateImageInfo() {
+        val currentImage = getCurrentImage()
+        if (currentImage != null) {
+            imageNameTextView.text = currentImage.name
+            imageCountTextView.text = "${currentPosition + 1} / ${images.size}"
+        }
+
+        // 更新按钮状态
+        prevButton.isEnabled = currentPosition > 0
+        nextButton.isEnabled = currentPosition < images.size - 1
+        prevButton.alpha = if (currentPosition > 0) 1f else 0.3f
+        nextButton.alpha = if (currentPosition < images.size - 1) 1f else 0.3f
+    }
+
+    fun toggleUI() {
+        isUIVisible = !isUIVisible
+
+        if (isUIVisible) {
+            // 显示UI
+            topBar.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+
+            bottomBar.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+
+            prevButton.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+
+            nextButton.animate()
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+        } else {
+            // 隐藏UI
+            topBar.animate()
+                .translationY(-topBar.height.toFloat())
+                .alpha(0f)
+                .setDuration(300)
+                .start()
+
+            bottomBar.animate()
+                .translationY(bottomBar.height.toFloat())
+                .alpha(0f)
+                .setDuration(300)
+                .start()
+
+            prevButton.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .start()
+
+            nextButton.animate()
+                .alpha(0f)
+                .setDuration(300)
+                .start()
         }
     }
 
@@ -275,11 +386,14 @@ class ImageViewerActivity : AppCompatActivity() {
                         finish()
                     } else {
                         // Update the ViewPager
-                        val adapter = ImagePagerAdapter(images, baseUrl)
+                        val adapter = ImagePagerAdapter(images, baseUrl) {
+                            toggleUI()
+                        }
                         imageViewPager.adapter = adapter
                         // Stay at same position or go to previous if we deleted the last one
                         val newPosition = if (position >= images.size) images.size - 1 else position
                         imageViewPager.setCurrentItem(newPosition, false)
+                        updateImageInfo()
                     }
                 } else {
                     Toast.makeText(
@@ -339,11 +453,14 @@ class ImageViewerActivity : AppCompatActivity() {
                         finish()
                     } else {
                         // Update the ViewPager
-                        val adapter = ImagePagerAdapter(images, baseUrl)
+                        val adapter = ImagePagerAdapter(images, baseUrl) {
+                            toggleUI()
+                        }
                         imageViewPager.adapter = adapter
                         // Stay at same position or go to previous if we deleted the last one
                         val newPosition = if (position >= images.size) images.size - 1 else position
                         imageViewPager.setCurrentItem(newPosition, false)
+                        updateImageInfo()
                     }
                 } else {
                     Toast.makeText(

@@ -15,7 +15,8 @@ import okhttp3.Request
 
 class ImagePagerAdapter(
     private val images: List<FileItem>,
-    private val baseUrl: String
+    private val baseUrl: String,
+    private val onImageClick: (() -> Unit)? = null
 ) : RecyclerView.Adapter<ImagePagerAdapter.ImageViewHolder>() {
 
     class ImageViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -31,6 +32,11 @@ class ImagePagerAdapter(
     override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
         val item = images[position]
         val imageUrl = "$baseUrl/stream/${item.path}"
+
+        // 设置点击监听器
+        holder.photoView.setOnClickListener {
+            onImageClick?.invoke()
+        }
 
         // 显示 placeholder
         holder.photoView.setImageResource(android.R.drawable.ic_menu_gallery)
