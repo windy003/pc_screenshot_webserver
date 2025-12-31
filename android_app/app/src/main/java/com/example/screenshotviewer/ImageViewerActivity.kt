@@ -152,6 +152,12 @@ class ImageViewerActivity : AppCompatActivity() {
 
         if (isUIVisible) {
             // 显示UI
+            pageCountTextView.animate()
+                .translationY(0f)
+                .alpha(1f)
+                .setDuration(300)
+                .start()
+
             bottomBar.animate()
                 .translationY(0f)
                 .alpha(1f)
@@ -169,6 +175,12 @@ class ImageViewerActivity : AppCompatActivity() {
                 .start()
         } else {
             // 隐藏UI
+            pageCountTextView.animate()
+                .translationY(-pageCountTextView.height.toFloat())
+                .alpha(0f)
+                .setDuration(300)
+                .start()
+
             bottomBar.animate()
                 .translationY(bottomBar.height.toFloat())
                 .alpha(0f)
