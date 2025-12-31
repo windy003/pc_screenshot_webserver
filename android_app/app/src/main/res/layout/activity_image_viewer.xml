@@ -43,25 +43,43 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="16dp"
         android:background="#80000000">
 
-        <Button
-            android:id="@+id/saveImageButton"
-            android:layout_width="0dp"
+        <!-- 页码显示 -->
+        <TextView
+            android:id="@+id/pageCountTextView"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="保存到本地"
-            android:layout_marginEnd="8dp" />
+            android:layout_gravity="center"
+            android:text="1 / 10"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:layout_marginBottom="12dp" />
 
-        <Button
-            android:id="@+id/deleteButton"
-            android:layout_width="0dp"
+        <!-- 按钮行 -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="删除"
-            android:backgroundTint="#D32F2F" />
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/saveImageButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="保存到本地"
+                android:layout_marginEnd="8dp" />
+
+            <Button
+                android:id="@+id/deleteButton"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="删除"
+                android:backgroundTint="#D32F2F" />
+        </LinearLayout>
     </LinearLayout>
 
 </RelativeLayout>

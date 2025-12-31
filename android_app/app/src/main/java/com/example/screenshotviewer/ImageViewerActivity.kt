@@ -39,6 +39,7 @@ class ImageViewerActivity : AppCompatActivity() {
     private lateinit var prevButton: Button
     private lateinit var nextButton: Button
     private lateinit var bottomBar: LinearLayout
+    private lateinit var pageCountTextView: TextView
 
     private var images: List<FileItem> = emptyList()
     private var currentPosition: Int = 0
@@ -79,6 +80,7 @@ class ImageViewerActivity : AppCompatActivity() {
         prevButton = findViewById(R.id.prevButton)
         nextButton = findViewById(R.id.nextButton)
         bottomBar = findViewById(R.id.bottomBar)
+        pageCountTextView = findViewById(R.id.pageCountTextView)
     }
 
     private fun setupViewPager() {
@@ -135,6 +137,9 @@ class ImageViewerActivity : AppCompatActivity() {
     }
 
     private fun updateImageInfo() {
+        // 更新页码显示
+        pageCountTextView.text = "${currentPosition + 1} / ${images.size}"
+
         // 更新按钮状态
         prevButton.isEnabled = currentPosition > 0
         nextButton.isEnabled = currentPosition < images.size - 1
