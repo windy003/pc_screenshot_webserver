@@ -9,73 +9,135 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
 
-    <!-- 左侧切换按钮 -->
-    <Button
-        android:id="@+id/prevButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_alignParentStart="true"
-        android:layout_centerVertical="true"
-        android:layout_marginStart="16dp"
-        android:text="‹"
-        android:textSize="32sp"
-        android:textColor="#FFFFFF"
-        android:background="@android:drawable/dialog_holo_dark_frame"
-        android:backgroundTint="#80000000" />
-
-    <!-- 右侧切换按钮 -->
-    <Button
-        android:id="@+id/nextButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+    <!-- 可拖动的悬浮按钮窗口 -->
+    <LinearLayout
+        android:id="@+id/floatingPanel"
+        android:layout_width="120dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentEnd="true"
         android:layout_centerVertical="true"
         android:layout_marginEnd="16dp"
-        android:text="›"
-        android:textSize="32sp"
-        android:textColor="#FFFFFF"
-        android:background="@android:drawable/dialog_holo_dark_frame"
-        android:backgroundTint="#80000000" />
+        android:orientation="vertical"
+        android:background="#E6000000"
+        android:elevation="8dp">
 
-    <!-- 顶部页码显示 -->
-    <TextView
-        android:id="@+id/pageCountTextView"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:text="1 / 10"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:padding="12dp"
-        android:background="#80000000" />
-
-    <!-- 底部按钮栏 -->
-    <LinearLayout
-        android:id="@+id/bottomBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:orientation="horizontal"
-        android:padding="16dp"
-        android:background="#80000000">
-
-        <Button
-            android:id="@+id/saveImageButton"
-            android:layout_width="0dp"
+        <!-- 拖动手柄 -->
+        <TextView
+            android:id="@+id/dragHandle"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="保存到本地"
-            android:layout_marginEnd="8dp" />
+            android:text="≡"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:padding="6dp"
+            android:background="#40FFFFFF" />
 
-        <Button
-            android:id="@+id/deleteButton"
-            android:layout_width="0dp"
+        <!-- 页码显示 -->
+        <TextView
+            android:id="@+id/pageCountTextView"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="删除"
-            android:backgroundTint="#D32F2F" />
+            android:text="1 / 10"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:paddingVertical="4dp"
+            android:layout_marginTop="2dp"
+            android:layout_marginHorizontal="4dp" />
+
+        <!-- 分隔线 -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#40FFFFFF"
+            android:layout_marginVertical="4dp"
+            android:layout_marginHorizontal="4dp" />
+
+        <!-- 按钮容器 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingHorizontal="4dp"
+            android:paddingBottom="4dp">
+
+            <!-- 上一张按钮 -->
+            <Button
+                android:id="@+id/prevButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="‹"
+                android:textSize="11sp"
+                android:backgroundTint="#505050"
+                android:layout_marginBottom="4dp"
+                android:minWidth="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp" />
+
+            <!-- 下一张按钮 -->
+            <Button
+                android:id="@+id/nextButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="›"
+                android:textSize="11sp"
+                android:backgroundTint="#505050"
+                android:layout_marginBottom="4dp"
+                android:minWidth="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp" />
+
+            <!-- 撤销按钮 -->
+            <Button
+                android:id="@+id/undoButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="撤销"
+                android:textSize="11sp"
+                android:backgroundTint="#FFA500"
+                android:enabled="false"
+                android:layout_marginBottom="4dp"
+                android:minWidth="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp" />
+
+            <!-- 保存按钮 -->
+            <Button
+                android:id="@+id/saveImageButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="保存"
+                android:textSize="11sp"
+                android:backgroundTint="#667eea"
+                android:layout_marginBottom="4dp"
+                android:minWidth="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp" />
+
+            <!-- 删除按钮 -->
+            <Button
+                android:id="@+id/deleteButton"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="删除"
+                android:textSize="11sp"
+                android:backgroundTint="#D32F2F"
+                android:minWidth="0dp"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp" />
+        </LinearLayout>
     </LinearLayout>
 
 </RelativeLayout>

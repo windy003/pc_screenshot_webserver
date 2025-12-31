@@ -36,15 +36,23 @@ class ImageViewerActivity : AppCompatActivity() {
     private lateinit var imageViewPager: ViewPager2
     private lateinit var saveImageButton: Button
     private lateinit var deleteButton: Button
+    private lateinit var undoButton: Button
     private lateinit var prevButton: Button
     private lateinit var nextButton: Button
-    private lateinit var bottomBar: LinearLayout
+    private lateinit var floatingPanel: LinearLayout
     private lateinit var pageCountTextView: TextView
 
     private var images: List<FileItem> = emptyList()
     private var currentPosition: Int = 0
     private var baseUrl: String = ""
     private var isUIVisible: Boolean = true
+
+    // 删除历史记录（最多保存5个）
+    private data class DeletedItem(
+        val image: FileItem,
+        val position: Int
+    )
+    private val deleteHistory = ArrayDeque<DeletedItem>(5)
 
     private val STORAGE_PERMISSION_CODE = 100
 
@@ -77,10 +85,39 @@ class ImageViewerActivity : AppCompatActivity() {
         imageViewPager = findViewById(R.id.imageViewPager)
         saveImageButton = findViewById(R.id.saveImageButton)
         deleteButton = findViewById(R.id.deleteButton)
+        undoButton = findViewById(R.id.undoButton)
         prevButton = findViewById(R.id.prevButton)
         nextButton = findViewById(R.id.nextButton)
-        bottomBar = findViewById(R.id.bottomBar)
+        floatingPanel = findViewById(R.id.floatingPanel)
         pageCountTextView = findViewById(R.id.pageCountTextView)
+
+        // 设置悬浮窗拖动功能
+        setupDraggablePanel()
+    }
+
+    private fun setupDraggablePanel() {
+        val dragHandle = findViewById<TextView>(R.id.dragHandle)
+        var dX = 0f
+        var dY = 0f
+
+        dragHandle.setOnTouchListener { view, event ->
+            when (event.action) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    dX = floatingPanel.x - event.rawX
+                    dY = floatingPanel.y - event.rawY
+                    true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    floatingPanel.animate()
+                        .x(event.rawX + dX)
+                        .y(event.rawY + dY)
+                        .setDuration(0)
+                        .start()
+                    true
+                }
+                else -> false
+            }
+        }
     }
 
     private fun setupViewPager() {
@@ -119,8 +156,12 @@ class ImageViewerActivity : AppCompatActivity() {
         deleteButton.setOnClickListener {
             val currentImage = getCurrentImage()
             if (currentImage != null) {
-                deleteCurrentImage(currentImage)
+                markAsDeleted(currentImage)
             }
+        }
+
+        undoButton.setOnClickListener {
+            undoLastDelete()
         }
 
         prevButton.setOnClickListener {
@@ -151,48 +192,14 @@ class ImageViewerActivity : AppCompatActivity() {
         isUIVisible = !isUIVisible
 
         if (isUIVisible) {
-            // 显示UI
-            pageCountTextView.animate()
-                .translationY(0f)
-                .alpha(1f)
-                .setDuration(300)
-                .start()
-
-            bottomBar.animate()
-                .translationY(0f)
-                .alpha(1f)
-                .setDuration(300)
-                .start()
-
-            prevButton.animate()
-                .alpha(1f)
-                .setDuration(300)
-                .start()
-
-            nextButton.animate()
+            // 显示悬浮窗
+            floatingPanel.animate()
                 .alpha(1f)
                 .setDuration(300)
                 .start()
         } else {
-            // 隐藏UI
-            pageCountTextView.animate()
-                .translationY(-pageCountTextView.height.toFloat())
-                .alpha(0f)
-                .setDuration(300)
-                .start()
-
-            bottomBar.animate()
-                .translationY(bottomBar.height.toFloat())
-                .alpha(0f)
-                .setDuration(300)
-                .start()
-
-            prevButton.animate()
-                .alpha(0f)
-                .setDuration(300)
-                .start()
-
-            nextButton.animate()
+            // 隐藏悬浮窗
+            floatingPanel.animate()
                 .alpha(0f)
                 .setDuration(300)
                 .start()
@@ -364,6 +371,12 @@ class ImageViewerActivity : AppCompatActivity() {
         }
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        // 在Activity销毁时执行所有待删除的操作
+        executePendingDeletes()
+    }
+
     private fun deleteImageAfterSave(image: FileItem) {
         lifecycleScope.launch {
             try {
@@ -412,6 +425,97 @@ class ImageViewerActivity : AppCompatActivity() {
                 saveImageButton.isEnabled = true
                 saveImageButton.text = "保存到本地"
             }
+        }
+    }
+
+    // 标记为删除（加入删除历史）
+    private fun markAsDeleted(image: FileItem) {
+        val position = currentPosition
+
+        // 如果删除历史已满（5个），先执行最早的删除
+        if (deleteHistory.size >= 5) {
+            val oldest = deleteHistory.removeFirst()
+            executeDelete(oldest.image)
+        }
+
+        // 添加到删除历史
+        deleteHistory.addLast(DeletedItem(image, position))
+
+        // 从当前列表中移除
+        val mutableImages = images.toMutableList()
+        mutableImages.removeAt(position)
+        images = mutableImages
+
+        // 更新UI
+        if (images.isEmpty()) {
+            // 所有图片都删除了，但先不关闭Activity，允许撤销
+            Toast.makeText(this, "已删除最后一张图片，可点击撤销恢复", Toast.LENGTH_SHORT).show()
+            deleteButton.isEnabled = false
+            saveImageButton.isEnabled = false
+        } else {
+            // 更新ViewPager
+            val adapter = ImagePagerAdapter(images, baseUrl) { toggleUI() }
+            imageViewPager.adapter = adapter
+            val newPosition = if (position >= images.size) images.size - 1 else position
+            imageViewPager.setCurrentItem(newPosition, false)
+            currentPosition = newPosition
+            updateImageInfo()
+        }
+
+        updateUndoButton()
+        Toast.makeText(this, "已删除，可点击撤销恢复", Toast.LENGTH_SHORT).show()
+    }
+
+    // 撤销最后一次删除
+    private fun undoLastDelete() {
+        if (deleteHistory.isEmpty()) return
+
+        val deleted = deleteHistory.removeLast()
+        val mutableImages = images.toMutableList()
+
+        // 恢复到原位置
+        val insertPosition = minOf(deleted.position, mutableImages.size)
+        mutableImages.add(insertPosition, deleted.image)
+        images = mutableImages
+
+        // 更新UI
+        val adapter = ImagePagerAdapter(images, baseUrl) { toggleUI() }
+        imageViewPager.adapter = adapter
+        imageViewPager.setCurrentItem(insertPosition, false)
+        currentPosition = insertPosition
+
+        // 恢复按钮状态
+        deleteButton.isEnabled = true
+        saveImageButton.isEnabled = true
+
+        updateImageInfo()
+        updateUndoButton()
+        Toast.makeText(this, "已恢复：${deleted.image.name}", Toast.LENGTH_SHORT).show()
+    }
+
+    // 更新撤销按钮状态
+    private fun updateUndoButton() {
+        undoButton.isEnabled = deleteHistory.isNotEmpty()
+        undoButton.alpha = if (deleteHistory.isNotEmpty()) 1f else 0.5f
+    }
+
+    // 执行真正的删除操作
+    private fun executeDelete(image: FileItem) {
+        lifecycleScope.launch {
+            try {
+                val apiService = RetrofitClient.getClient(baseUrl + "/")
+                apiService.deleteFile(image.path)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // 执行所有待删除的操作
+    private fun executePendingDeletes() {
+        while (deleteHistory.isNotEmpty()) {
+            val deleted = deleteHistory.removeFirst()
+            executeDelete(deleted.image)
         }
     }
 
