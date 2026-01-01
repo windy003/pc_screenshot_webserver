@@ -63,35 +63,45 @@
             android:paddingHorizontal="4dp"
             android:paddingBottom="4dp">
 
-            <!-- 上一张按钮 -->
-            <Button
-                android:id="@+id/prevButton"
+            <!-- 上一张/下一张按钮容器 -->
+            <LinearLayout
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:text="‹"
-                android:textSize="11sp"
-                android:backgroundTint="#505050"
-                android:layout_marginBottom="4dp"
-                android:minWidth="0dp"
-                android:insetLeft="0dp"
-                android:insetRight="0dp"
-                android:paddingLeft="0dp"
-                android:paddingRight="0dp" />
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="4dp">
 
-            <!-- 下一张按钮 -->
-            <Button
-                android:id="@+id/nextButton"
-                android:layout_width="match_parent"
-                android:layout_height="40dp"
-                android:text="›"
-                android:textSize="11sp"
-                android:backgroundTint="#505050"
-                android:layout_marginBottom="4dp"
-                android:minWidth="0dp"
-                android:insetLeft="0dp"
-                android:insetRight="0dp"
-                android:paddingLeft="0dp"
-                android:paddingRight="0dp" />
+                <!-- 上一张按钮 -->
+                <Button
+                    android:id="@+id/prevButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="‹"
+                    android:textSize="11sp"
+                    android:backgroundTint="#505050"
+                    android:layout_marginEnd="2dp"
+                    android:minWidth="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp" />
+
+                <!-- 下一张按钮 -->
+                <Button
+                    android:id="@+id/nextButton"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:text="›"
+                    android:textSize="11sp"
+                    android:backgroundTint="#505050"
+                    android:layout_marginStart="2dp"
+                    android:minWidth="0dp"
+                    android:insetLeft="0dp"
+                    android:insetRight="0dp"
+                    android:paddingLeft="0dp"
+                    android:paddingRight="0dp" />
+            </LinearLayout>
 
             <!-- 撤销按钮 -->
             <Button
