@@ -47,12 +47,18 @@ class ImageViewerActivity : AppCompatActivity() {
     private var baseUrl: String = ""
     private var isUIVisible: Boolean = true
 
-    // 删除历史记录（最多保存5个）
-    private data class DeletedItem(
+    // 操作类型
+    private enum class OperationType {
+        DELETE, SAVE
+    }
+
+    // 操作历史记录（无限制）
+    private data class OperationItem(
+        val type: OperationType,
         val image: FileItem,
         val position: Int
     )
-    private val deleteHistory = ArrayDeque<DeletedItem>(5)
+    private val operationHistory = ArrayDeque<OperationItem>()
 
     private val STORAGE_PERMISSION_CODE = 100
 
@@ -147,7 +153,10 @@ class ImageViewerActivity : AppCompatActivity() {
     private fun setupListeners() {
         saveImageButton.setOnClickListener {
             if (checkStoragePermission()) {
-                saveImageToLocal()
+                val currentImage = getCurrentImage()
+                if (currentImage != null) {
+                    markAsSaved(currentImage)
+                }
             } else {
                 requestStoragePermission()
             }
@@ -364,7 +373,10 @@ class ImageViewerActivity : AppCompatActivity() {
         if (requestCode == STORAGE_PERMISSION_CODE) {
             if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 Toast.makeText(this, "存储权限已授予", Toast.LENGTH_SHORT).show()
-                saveImageToLocal()
+                val currentImage = getCurrentImage()
+                if (currentImage != null) {
+                    markAsSaved(currentImage)
+                }
             } else {
                 Toast.makeText(this, "需要存储权限才能保存图片", Toast.LENGTH_LONG).show()
             }
@@ -428,20 +440,12 @@ class ImageViewerActivity : AppCompatActivity() {
         }
     }
 
-    // 标记为删除（加入删除历史）
-    private fun markAsDeleted(image: FileItem) {
+    // 标记为保存（加入保存历史）
+    private fun markAsSaved(image: FileItem) {
         val position = currentPosition
 
-        // 如果删除历史已满（5个），先执行最早的删除
-        if (deleteHistory.size >= 5) {
-            val oldest = deleteHistory.removeFirst()
-            lifecycleScope.launch {
-                executeDeleteAsync(oldest.image)
-            }
-        }
-
-        // 添加到删除历史
-        deleteHistory.addLast(DeletedItem(image, position))
+        // 添加到操作历史
+        operationHistory.addLast(OperationItem(OperationType.SAVE, image, position))
 
         // 从当前列表中移除
         val mutableImages = images.toMutableList()
@@ -450,8 +454,8 @@ class ImageViewerActivity : AppCompatActivity() {
 
         // 更新UI
         if (images.isEmpty()) {
-            // 所有图片都删除了，但先不关闭Activity，允许撤销
-            Toast.makeText(this, "已删除最后一张图片，可点击撤销恢复", Toast.LENGTH_SHORT).show()
+            // 所有图片都标记保存了，但先不关闭Activity，允许撤销
+            Toast.makeText(this, "已标记保存，可点击撤销恢复", Toast.LENGTH_SHORT).show()
             deleteButton.isEnabled = false
             saveImageButton.isEnabled = false
         } else {
@@ -465,19 +469,51 @@ class ImageViewerActivity : AppCompatActivity() {
         }
 
         updateUndoButton()
-        Toast.makeText(this, "已删除，可点击撤销恢复", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "已标记保存，退出时执行保存操作", Toast.LENGTH_SHORT).show()
     }
 
-    // 撤销最后一次删除
-    private fun undoLastDelete() {
-        if (deleteHistory.isEmpty()) return
+    // 标记为删除（加入删除历史）
+    private fun markAsDeleted(image: FileItem) {
+        val position = currentPosition
 
-        val deleted = deleteHistory.removeLast()
+        // 添加到操作历史（无限制）
+        operationHistory.addLast(OperationItem(OperationType.DELETE, image, position))
+
+        // 从当前列表中移除
+        val mutableImages = images.toMutableList()
+        mutableImages.removeAt(position)
+        images = mutableImages
+
+        // 更新UI
+        if (images.isEmpty()) {
+            // 所有图片都删除了，但先不关闭Activity，允许撤销
+            Toast.makeText(this, "已标记删除，可点击撤销恢复", Toast.LENGTH_SHORT).show()
+            deleteButton.isEnabled = false
+            saveImageButton.isEnabled = false
+        } else {
+            // 更新ViewPager
+            val adapter = ImagePagerAdapter(images, baseUrl) { toggleUI() }
+            imageViewPager.adapter = adapter
+            val newPosition = if (position >= images.size) images.size - 1 else position
+            imageViewPager.setCurrentItem(newPosition, false)
+            currentPosition = newPosition
+            updateImageInfo()
+        }
+
+        updateUndoButton()
+        Toast.makeText(this, "已标记删除，退出时执行删除操作", Toast.LENGTH_SHORT).show()
+    }
+
+    // 撤销最后一次操作
+    private fun undoLastDelete() {
+        if (operationHistory.isEmpty()) return
+
+        val operation = operationHistory.removeLast()
         val mutableImages = images.toMutableList()
 
         // 恢复到原位置
-        val insertPosition = minOf(deleted.position, mutableImages.size)
-        mutableImages.add(insertPosition, deleted.image)
+        val insertPosition = minOf(operation.position, mutableImages.size)
+        mutableImages.add(insertPosition, operation.image)
         images = mutableImages
 
         // 更新UI
@@ -492,12 +528,17 @@ class ImageViewerActivity : AppCompatActivity() {
 
         updateImageInfo()
         updateUndoButton()
-        Toast.makeText(this, "已恢复：${deleted.image.name}", Toast.LENGTH_SHORT).show()
+
+        val actionText = when (operation.type) {
+            OperationType.DELETE -> "删除"
+            OperationType.SAVE -> "保存"
+        }
+        Toast.makeText(this, "已撤销${actionText}：${operation.image.name}", Toast.LENGTH_SHORT).show()
     }
 
     // 更新撤销按钮状态
     private fun updateUndoButton() {
-        val count = deleteHistory.size
+        val count = operationHistory.size
         undoButton.isEnabled = count > 0
         undoButton.alpha = if (count > 0) 1f else 0.5f
         undoButton.text = if (count > 0) "撤销($count)" else "撤销"
@@ -515,16 +556,43 @@ class ImageViewerActivity : AppCompatActivity() {
         }
     }
 
-    // 执行所有待删除的操作
+    // 执行真正的保存操作
+    private suspend fun executeSaveAsync(image: FileItem) {
+        try {
+            val success = downloadImageToLocal(image)
+            if (success) {
+                // 保存成功后删除服务器上的图片
+                withContext(Dispatchers.IO) {
+                    try {
+                        val apiService = RetrofitClient.getClient(baseUrl + "/")
+                        apiService.deleteFile(image.path)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    // 执行所有待处理的操作（保存和删除）
     private fun executePendingDeletes() {
-        if (deleteHistory.isEmpty()) return
+        if (operationHistory.isEmpty()) return
 
         lifecycleScope.launch(Dispatchers.IO) {
             try {
-                while (deleteHistory.isNotEmpty()) {
-                    val deleted = deleteHistory.removeFirst()
-                    val apiService = RetrofitClient.getClient(baseUrl + "/")
-                    apiService.deleteFile(deleted.image.path)
+                while (operationHistory.isNotEmpty()) {
+                    val operation = operationHistory.removeFirst()
+                    when (operation.type) {
+                        OperationType.DELETE -> {
+                            val apiService = RetrofitClient.getClient(baseUrl + "/")
+                            apiService.deleteFile(operation.image.path)
+                        }
+                        OperationType.SAVE -> {
+                            executeSaveAsync(operation.image)
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
