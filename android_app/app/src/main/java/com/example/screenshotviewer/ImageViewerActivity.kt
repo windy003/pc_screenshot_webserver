@@ -371,9 +371,9 @@ class ImageViewerActivity : AppCompatActivity() {
         }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        // 在Activity销毁时执行所有待删除的操作
+    override fun onPause() {
+        super.onPause()
+        // 在Activity暂停时执行所有待删除的操作
         executePendingDeletes()
     }
 
@@ -435,7 +435,9 @@ class ImageViewerActivity : AppCompatActivity() {
         // 如果删除历史已满（5个），先执行最早的删除
         if (deleteHistory.size >= 5) {
             val oldest = deleteHistory.removeFirst()
-            executeDelete(oldest.image)
+            lifecycleScope.launch {
+                executeDeleteAsync(oldest.image)
+            }
         }
 
         // 添加到删除历史
@@ -495,13 +497,15 @@ class ImageViewerActivity : AppCompatActivity() {
 
     // 更新撤销按钮状态
     private fun updateUndoButton() {
-        undoButton.isEnabled = deleteHistory.isNotEmpty()
-        undoButton.alpha = if (deleteHistory.isNotEmpty()) 1f else 0.5f
+        val count = deleteHistory.size
+        undoButton.isEnabled = count > 0
+        undoButton.alpha = if (count > 0) 1f else 0.5f
+        undoButton.text = if (count > 0) "撤销($count)" else "撤销"
     }
 
     // 执行真正的删除操作
-    private fun executeDelete(image: FileItem) {
-        lifecycleScope.launch {
+    private suspend fun executeDeleteAsync(image: FileItem) {
+        withContext(Dispatchers.IO) {
             try {
                 val apiService = RetrofitClient.getClient(baseUrl + "/")
                 apiService.deleteFile(image.path)
@@ -513,9 +517,18 @@ class ImageViewerActivity : AppCompatActivity() {
 
     // 执行所有待删除的操作
     private fun executePendingDeletes() {
-        while (deleteHistory.isNotEmpty()) {
-            val deleted = deleteHistory.removeFirst()
-            executeDelete(deleted.image)
+        if (deleteHistory.isEmpty()) return
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                while (deleteHistory.isNotEmpty()) {
+                    val deleted = deleteHistory.removeFirst()
+                    val apiService = RetrofitClient.getClient(baseUrl + "/")
+                    apiService.deleteFile(deleted.image.path)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
         }
     }
 
