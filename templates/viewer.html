@@ -323,8 +323,10 @@
             prevBtn.disabled = currentIndex === 0;
             nextBtn.disabled = currentIndex === playlist.length - 1;
 
-            // 重置缩放和旋转
-            resetZoom();
+            // 重置旋转和位置
+            rotation = 0;
+            translateX = 0;
+            translateY = 0;
         }
 
         function loadImage(index) {
@@ -362,6 +364,20 @@
             translateX = 0;
             translateY = 0;
             updateTransform();
+        }
+
+        function fitToWidth() {
+            // 获取容器宽度
+            const containerWidth = document.querySelector('.viewer-container').clientWidth;
+            // 获取图片的自然宽度
+            const imgNaturalWidth = img.naturalWidth;
+            // 计算需要的缩放比例
+            if (imgNaturalWidth > 0) {
+                scale = containerWidth / imgNaturalWidth;
+                translateX = 0;
+                translateY = 0;
+                updateTransform();
+            }
         }
 
         function rotateLeft() {
@@ -530,6 +546,11 @@
 
         img.addEventListener('touchend', () => {
             isDragging = false;
+        });
+
+        // 图片加载完成后自动适应宽度
+        img.addEventListener('load', () => {
+            fitToWidth();
         });
 
         // 初始化按钮状态

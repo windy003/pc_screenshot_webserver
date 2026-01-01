@@ -38,11 +38,6 @@ class ImagePagerAdapter(
             onImageClick?.invoke()
         }
 
-        // 设置缩放范围：最小0.5倍，中等1倍，最大10倍
-        holder.photoView.minimumScale = 0.5f
-        holder.photoView.mediumScale = 2f
-        holder.photoView.maximumScale = 10f
-
         // 显示 placeholder
         holder.photoView.setImageResource(android.R.drawable.ic_menu_gallery)
 
@@ -59,7 +54,73 @@ class ImagePagerAdapter(
 
                     withContext(Dispatchers.Main) {
                         if (bitmap != null) {
+                            // 设置图片
                             holder.photoView.setImageBitmap(bitmap)
+
+                            // 使用ViewTreeObserver等待PhotoView完成布局
+                            holder.photoView.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+                                override fun onGlobalLayout() {
+                                    holder.photoView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+
+                                    // 等待PhotoView完成初始化后再调整缩放
+                                    holder.photoView.post {
+                                        try {
+                                            // 获取PhotoView当前的显示宽度（PhotoView自己计算的）
+                                            val currentDisplayRect = holder.photoView.displayRect
+                                            val currentDisplayWidth = currentDisplayRect?.width() ?: 0f
+
+                                            // 获取PhotoView容器的实际宽度
+                                            val viewWidth = holder.photoView.width.toFloat()
+
+                                            android.util.Log.d("ImagePagerAdapter", "ViewWidth: $viewWidth, Current DisplayRect width: $currentDisplayWidth")
+
+                                            if (currentDisplayWidth > 0 && viewWidth > 0) {
+                                                // 计算需要的缩放倍数（相对于当前显示）
+                                                val scaleFactor = viewWidth / currentDisplayWidth
+                                                val currentScale = holder.photoView.scale
+                                                val targetScale = currentScale * scaleFactor
+
+                                                android.util.Log.d("ImagePagerAdapter", "Scale factor: $scaleFactor")
+                                                android.util.Log.d("ImagePagerAdapter", "Current scale: $currentScale, Target scale: $targetScale")
+
+                                                // 限制targetScale在合理范围内 (0.1 到 50.0) - 放宽上限以支持大屏
+                                                val safeTargetScale = targetScale.coerceIn(0.1f, 50.0f)
+
+                                                if (safeTargetScale != targetScale) {
+                                                    android.util.Log.w("ImagePagerAdapter", "Target scale $targetScale out of range, clamped to $safeTargetScale")
+                                                }
+
+                                                // 设置缩放范围 - 确保min < target < max
+                                                val minScale = (safeTargetScale * 0.5f).coerceAtLeast(0.1f)
+                                                val maxScale = (safeTargetScale * 5f).coerceAtMost(50.0f)
+                                                val medScale = (safeTargetScale * 2f).coerceIn(minScale, maxScale)
+
+                                                android.util.Log.d("ImagePagerAdapter", "Scale range: min=$minScale, target=$safeTargetScale, med=$medScale, max=$maxScale")
+
+                                                // 按正确的顺序设置scale: 先max, 再medium, 最后min
+                                                holder.photoView.maximumScale = maxScale
+                                                holder.photoView.mediumScale = medScale
+                                                holder.photoView.minimumScale = minScale
+
+                                                // 应用缩放
+                                                holder.photoView.setScale(safeTargetScale, false)
+
+                                                // 验证结果
+                                                holder.photoView.postDelayed({
+                                                    val finalDisplayRect = holder.photoView.displayRect
+                                                    android.util.Log.d("ImagePagerAdapter", "Final - scale: ${holder.photoView.scale}")
+                                                    android.util.Log.d("ImagePagerAdapter", "Final - DisplayRect width: ${finalDisplayRect?.width()}")
+                                                }, 100)
+                                            } else {
+                                                android.util.Log.w("ImagePagerAdapter", "Invalid dimensions: viewWidth=$viewWidth, currentDisplayWidth=$currentDisplayWidth")
+                                            }
+                                        } catch (e: Exception) {
+                                            android.util.Log.e("ImagePagerAdapter", "Error setting scale", e)
+                                            e.printStackTrace()
+                                        }
+                                    }
+                                }
+                            })
                         } else {
                             holder.photoView.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
                         }
