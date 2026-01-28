@@ -1,6 +1,5 @@
 package com.example.screenshotviewer
 
-import android.graphics.BitmapFactory
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,12 +7,8 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 
 class ImageAdapter(
     private var images: List<FileItem>,
@@ -40,40 +35,16 @@ class ImageAdapter(
         val item = images[position]
         holder.imageName.text = item.name
 
-        // 显示placeholder
-        holder.imageView.setImageResource(android.R.drawable.ic_menu_gallery)
-
-        // 使用OkHttp + BitmapFactory加载图片
+        // 使用 Glide 加载图片，自动处理大图片和内存管理
         val imageUrl = "$baseUrl/stream/${item.path}"
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val client = RetrofitClient.getOkHttpClient()
-                val request = Request.Builder().url(imageUrl).build()
-                val response = client.newCall(request).execute()
-
-                if (response.isSuccessful) {
-                    val inputStream = response.body?.byteStream()
-                    val bitmap = BitmapFactory.decodeStream(inputStream)
-
-                    withContext(Dispatchers.Main) {
-                        if (bitmap != null) {
-                            holder.imageView.setImageBitmap(bitmap)
-                        } else {
-                            holder.imageView.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                        }
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        holder.imageView.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    holder.imageView.setImageResource(android.R.drawable.ic_menu_close_clear_cancel)
-                }
-            }
-        }
+        Glide.with(holder.imageView.context)
+            .load(imageUrl)
+            .placeholder(android.R.drawable.ic_menu_gallery)
+            .error(android.R.drawable.ic_menu_close_clear_cancel)
+            .diskCacheStrategy(DiskCacheStrategy.ALL)
+            .override(400, 400)  // 缩略图只需要小尺寸
+            .centerCrop()
+            .into(holder.imageView)
 
         holder.imageView.setOnClickListener { onImageClick(item) }
         holder.downloadButton.setOnClickListener { onDownloadClick(item) }
